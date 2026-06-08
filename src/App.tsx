@@ -1,122 +1,164 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataProvider } from './contexts/DataContext';
+
+// Layouts
+import MainLayout from './components/layout/MainLayout';
+
+// Pages
+import LoginPage from './pages/auth/LoginPage';
+
+// Recepcionista Pages
+import RegistroPacientePage from './pages/rececionista/RegistroPacientePage';
+import GestaoFilaPage from './pages/rececionista/GestaoFilaPage';
+
+// Enfermeiro Pages
+import TriagemPage from './pages/enfermeiro/TriagemPage';
+
+// Médico Pages
+import ListaEsperaSimplePage from './pages/medico/ListaEsperaSimplePage';
+import RealizarConsultaPage from './pages/medico/ListaEsperaPage';
+
+// Administrador Pages
+import DashboardPage from './pages/administrador/DashboardPage';
+
+// Componente de Proteção de Rota
+const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedTypes?: string[] }> = ({
+  children,
+  allowedTypes,
+}) => {
+  const { isAuthenticated, isLoading, utilizador } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="spinner w-12 h-12"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (allowedTypes && utilizador && !allowedTypes.includes(utilizador.tipo)) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Componente de Redirecionamento por Tipo de Utilizador
+const RedirectToDashboard: React.FC = () => {
+  const { utilizador, isAuthenticated } = useAuth();
+
+  if (!isAuthenticated || !utilizador) {
+    return <Navigate to="/login" replace />;
+  }
+
+  switch (utilizador.tipo) {
+    case 'Administrador':
+      return <Navigate to="/administrador/dashboard" replace />;
+    case 'Médico':
+      return <Navigate to="/medico/lista-espera" replace />;
+    case 'Enfermeiro':
+      return <Navigate to="/enfermeiro/triagem" replace />;
+    case 'Recepcionista':
+      return <Navigate to="/rececionista/gestao-fila" replace />;
+    default:
+      return <Navigate to="/login" replace />;
+  }
+};
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <BrowserRouter>
+      <AuthProvider>
+        <DataProvider>
+          <Routes>
+            {/* Rota Pública */}
+            <Route path="/login" element={<LoginPage />} />
 
-      <div className="ticks"></div>
+            {/* Rota Principal - Redireciona conforme o tipo de utilizador */}
+            <Route path="/" element={<RedirectToDashboard />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            {/* Rotas do Rececionista */}
+            <Route
+              path="/rececionista/registro-paciente"
+              element={
+                <ProtectedRoute allowedTypes={['Recepcionista']}>
+                  <MainLayout title="Registo de Paciente">
+                    <RegistroPacientePage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+            <Route
+              path="/rececionista/gestao-fila"
+              element={
+                <ProtectedRoute allowedTypes={['Recepcionista']}>
+                  <MainLayout title="Gestão de Fila">
+                    <GestaoFilaPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rotas do Enfermeiro */}
+            <Route
+              path="/enfermeiro/triagem"
+              element={
+                <ProtectedRoute allowedTypes={['Enfermeiro']}>
+                  <MainLayout title="Triagem">
+                    <TriagemPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rotas do Médico */}
+            <Route
+              path="/medico/lista-espera"
+              element={
+                <ProtectedRoute allowedTypes={['Médico']}>
+                  <MainLayout title="Lista de Espera">
+                    <ListaEsperaSimplePage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/medico/realizar-consulta/:id"
+              element={
+                <ProtectedRoute allowedTypes={['Médico']}>
+                  <MainLayout title="Realizar Consulta">
+                    <RealizarConsultaPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rotas do Administrador */}
+            <Route
+              path="/administrador/dashboard"
+              element={
+                <ProtectedRoute allowedTypes={['Administrador']}>
+                  <MainLayout title="Dashboard">
+                    <DashboardPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Rota 404 */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </DataProvider>
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
